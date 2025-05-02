@@ -15,6 +15,7 @@ const searchByCategoryButton = document.getElementById(
 );
 const submitButton = document.getElementById("submit-btn");
 const toast = document.getElementById("toast");
+let activeProductId = null;
 
 let products = localStorage.getItem("products")
   ? JSON.parse(localStorage.getItem("products"))
@@ -47,17 +48,29 @@ addForm.addEventListener("submit", (event) => {
 
   const product = {
     ...data,
-    id: Math.floor(100000 + Math.random() * 900000),
+    id: activeProductId ?? Math.floor(100000 + Math.random() * 900000),
+    total: total.innerHTML,
   };
 
   const productCount = count.value || 1;
 
-  for (let i = 0; i < productCount; i++) {
-    const newProduct = {
-      ...product,
-      id: Math.floor(100000 + Math.random() * 900000),
-    };
-    products.push(newProduct);
+  if (!activeProductId) {
+    for (let i = 0; i < productCount; i++) {
+      const newProduct = {
+        ...product,
+        id: Math.floor(100000 + Math.random() * 900000),
+      };
+
+      showToast("Product added successfully!");
+
+      products.push(newProduct);
+    }
+  } else {
+    products = products.map((item) =>
+      item.id === activeProductId ? product : item
+    );
+
+    showToast("Product updated successfully!");
   }
 
   addForm.reset();
@@ -68,8 +81,8 @@ addForm.addEventListener("submit", (event) => {
 });
 
 // Show data
-const showData = () => {
-  tableBody.innerHTML = products
+const showData = (data = products) => {
+  tableBody.innerHTML = data
     .map((product) => {
       return `<tr data-id="${product.id}">
       <td>${product.id}</td>
@@ -78,13 +91,17 @@ const showData = () => {
       <td>${product.taxes}</td>
       <td>${product.ads}</td>
       <td>${product.discount > 0 ? product.discount : "-"}</td>
-      <td>${product.total}</td>
+      <td>${product.total || 0}</td>
       <td>${product.category}</td>
       <td>
-        <button class="update-btn" type="button">Update</button>
+        <button class="update-btn" type="button" onclick="updateProduct(${
+          product.id
+        })">Update</button>
       </td>
       <td>
-        <button class="delete-btn" type="button">Delete</button>
+        <button class="delete-btn" type="button" onclick="deleteProduct(${
+          product.id
+        })">Delete</button>
       </td>
     </tr>`;
     })
@@ -92,3 +109,72 @@ const showData = () => {
 };
 
 showData();
+
+// Update product
+const updateProduct = (id) => {
+  const selectedProduct = products.find((product) => product.id === Number(id));
+
+  title.value = selectedProduct.title;
+  price.value = selectedProduct.price;
+  ads.value = selectedProduct.ads;
+  taxes.value = selectedProduct.taxes;
+  discount.value = selectedProduct.discount;
+  total.innerHTML = selectedProduct.total;
+  category.value = selectedProduct.category;
+  count.style.display = "none";
+  submitButton.innerHTML = "Update";
+  activeProductId = id;
+};
+
+// Delete product
+const deleteProduct = (id) => {
+  products = products.filter((product) => product.id !== id);
+
+  showData();
+
+  localStorage.setItem("products", JSON.stringify(products));
+
+  showToast("Product deleted successfully!");
+};
+
+const searchProducts = (type) => {
+  if (!searchInput.value) {
+    showData();
+    return null;
+  }
+
+  let filteredProducts = [];
+
+  if (type === "category") {
+    filteredProducts = products.filter(
+      (product) => product.category === searchInput.value
+    );
+  } else if (type === "title") {
+    filteredProducts = products.filter((product) =>
+      product.title.toLowerCase().includes(searchInput.value.toLowerCase())
+    );
+  }
+
+  showToast("Products filtered successfully");
+
+  showData(filteredProducts);
+};
+
+searchByTitleButton.addEventListener("click", () => {
+  searchProducts("title");
+});
+
+searchByCategoryButton.addEventListener("click", () => {
+  searchProducts("category");
+});
+
+// Show toast
+
+const showToast = (message) => {
+  toast.innerHTML = message;
+  toast.style.display = "block";
+
+  setTimeout(() => {
+    toast.style.display = "none";
+  }, 3000);
+};
